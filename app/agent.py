@@ -9,17 +9,17 @@ NUTRITION_TOOL = {
     "type": "function",
     "function": {
         "name": "get_nutrition_data",
-        "description": "Look up calorie data for a food ingredient from USDA database.",
+        "description": "Look up calorie data for a food ingredient or dish from USDA database.",
         "parameters": {
             "type": "object",
             "properties": {
                 "ingredient": {
                     "type": "string",
-                    "description": "Food ingredient name e.g. grilled chicken breast"
+                    "description": "Food ingredient or dish name e.g. paneer biryani"
                 },
                 "amount": {
                     "type": "string",
-                    "description": "Amount e.g. 150g, 1 cup, 1 medium"
+                    "description": "Amount in grams e.g. 150g"
                 }
             },
             "required": ["ingredient", "amount"]
@@ -28,15 +28,27 @@ NUTRITION_TOOL = {
 }
 
 SYSTEM_PROMPT = """You are a nutrition assistant.
-When given a meal description:
-1. Identify each ingredient and estimate a realistic portion size
-2. Call get_nutrition_data for EACH ingredient separately
-3. Calculate total calories from all ingredients
-4. Return ONLY valid JSON in this exact format with no extra text:
+Estimate calories for meals by looking up each ingredient.
+
+STRICT RULE: Call get_nutrition_data only ONE time per response.
+Never make more than one tool call at a time.
+Wait for the result before making the next call.
+
+Use these portion sizes:
+- Protein (meat, fish, eggs, paneer, tofu): 150g
+- Grain or starch (rice, pasta, bread, naan, roti): 150g
+- Vegetable: 80g
+- Sauce, gravy, dressing: 30g
+- Dairy (cheese, yogurt, cream): 50g
+- Fruit: 100g
+- Legume (lentils, dal, beans): 150g
+- Ghee or oil: 30g
+
+After looking up ALL ingredients one by one return ONLY this JSON:
 {
   "estimated_calories": <total integer>,
   "breakdown": [
-    {"ingredient": "<name>", "amount": "<amount>", "calories": <integer>}
+    {"ingredient": "<name>", "amount": "<Xg>", "calories": <integer>}
   ]
 }"""
 
@@ -56,32 +68,50 @@ async def analyze_meal_with_agent(meal_description: str) -> dict:
             messages=messages,
             tools=[NUTRITION_TOOL],
             tool_choice="auto",
-            temperature=0.1
+            temperature=0.1,
+            parallel_tool_calls=False
         )
 
         message = response.choices[0].message
 
         if message.tool_calls:
-            messages.append({"role": "assistant", "content": None, "tool_calls": message.tool_calls})
 
-            for tool_call in message.tool_calls:
-                tool_call_count += 1
+            # Only process the FIRST tool call to enforce one at a time
+            tool_call = message.tool_calls[0]
 
-                if tool_call_count > max_tool_calls:
-                    break
+            # Append assistant message with only the first tool call
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": tool_call.id,
+                        "type": "function",
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments
+                        }
+                    }
+                ]
+            })
 
-                args = json.loads(tool_call.function.arguments)
+            tool_call_count += 1
 
-                result = await get_nutrition_data(
-                    ingredient=args["ingredient"],
-                    amount=args["amount"]
-                )
+            if tool_call_count > max_tool_calls:
+                break
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": json.dumps(result)
-                })
+            args = json.loads(tool_call.function.arguments)
+
+            result = await get_nutrition_data(
+                ingredient=args["ingredient"],
+                amount=args["amount"]
+            )
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result)
+            })
 
         else:
             raw_text = message.content.strip()
