@@ -9,7 +9,7 @@ You type a meal description. The app returns an estimated calorie count with a p
 **Input:**
 ```json
 {
-  "meal_description": "grilled chicken and brown rice"
+  "meal_description": "grilled chicken and rice"
 }
 ```
 
