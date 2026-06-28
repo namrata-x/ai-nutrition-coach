@@ -16,16 +16,25 @@ You type a meal description. The app returns an estimated calorie count with a p
 **Output:**
 ```json
 {
-  "meal_description": "grilled chicken and brown rice",
-  "estimated_calories": 1102,
+  "meal_description": "grilled chicken and rice",
+  "estimated_calories": 414,
   "calorie_range": "medium",
   "breakdown": [
-    { "ingredient": "grilled chicken breast", "amount": "150g", "calories": 226 },
-    { "ingredient": "brown rice", "amount": "1 cup", "calories": 876 }
+    {
+      "ingredient": "grilled chicken",
+      "amount": "150g",
+      "calories": 268
+    },
+    {
+      "ingredient": "cooked white rice",
+      "amount": "150g",
+      "calories": 146
+    }
   ],
-  "confidence": "medium",
-  "verification_status": "minor_disagreement"
+  "confidence": "high",
+  "verification_status": "verified"
 }
+
 ```
 
 ## How It Works
