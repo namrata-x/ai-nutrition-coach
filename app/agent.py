@@ -1,6 +1,6 @@
 import json
 import os
-from mistralai.client import Mistral
+from mistralai import Mistral
 from app.nutrition_api import get_nutrition_data
 
 client = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
