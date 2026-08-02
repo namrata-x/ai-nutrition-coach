@@ -69,7 +69,6 @@ async def analyze_meal_with_agent(meal_description: str) -> dict:
             tools=[NUTRITION_TOOL],
             tool_choice="auto",
             temperature=0.1,
-            parallel_tool_calls=False
         )
 
         message = response.choices[0].message
